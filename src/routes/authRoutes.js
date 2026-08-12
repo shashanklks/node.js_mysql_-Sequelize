@@ -5,10 +5,9 @@ const { authenticateToken } = require('../utils/authMiddleware');
 
 const router = express.Router();
 
+// Legacy email + password endpoints, kept at the original paths.
 router.post('/register', authController.registerUser);
-
 router.post('/login', authController.loginUser);
-
 router.get('/user-details', authenticateToken, authController.getUserDetails);
 
 module.exports = router;

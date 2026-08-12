@@ -1,26 +1,28 @@
 // utils/authMiddleware.js
-const jwt = require('jsonwebtoken');
-const  User  = require('../model/User');
+const { User } = require('../model');
+const { verifyToken } = require('./jwt');
+const { fail } = require('./respond');
 
 exports.authenticateToken = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!token) return fail(res, 'Unauthorized', 401);
+
+    let payload;
+    try {
+      payload = verifyToken(token);
+    } catch (err) {
+      return fail(res, 'Session expired, please log in again', 401);
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
-      if (err) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
+    const user = await User.findByPk(payload.id);
+    if (!user) return fail(res, 'Session expired, please log in again', 401);
 
-      req.user = await User.findByPk(user.id);
-      next();
-    });
+    req.user = user;
+    return next();
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong' });
+    return next(error);
   }
 };

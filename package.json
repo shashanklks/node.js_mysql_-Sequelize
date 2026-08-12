@@ -1,10 +1,12 @@
 {
-  "name": "your-project-name",
+  "name": "khatabook-api",
   "version": "1.0.0",
-  "description": "Your project description",
+  "description": "Khatabook style ledger API for the Android app in ./android",
   "main": "src/app.js",
   "scripts": {
-    "start": "nodemon src/app.js"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "node --test"
   },
   "author": "Your Name",
   "license": "MIT",
