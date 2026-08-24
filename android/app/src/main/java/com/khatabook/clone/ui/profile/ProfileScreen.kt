@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,20 +40,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.khatabook.clone.ui.auth.LabeledField
-import com.khatabook.clone.ui.common.Avatar
+import com.khatabook.clone.ui.common.LabeledField
+import com.khatabook.clone.ui.common.HeaderSurface
 import com.khatabook.clone.ui.common.KhataTopBar
 import com.khatabook.clone.ui.home.HomeBottomBar
-import com.khatabook.clone.ui.theme.Divider
-import com.khatabook.clone.ui.theme.GreenGet
-import com.khatabook.clone.ui.theme.Navy
-import com.khatabook.clone.ui.theme.RedGive
-import com.khatabook.clone.ui.theme.ScreenBg
-import com.khatabook.clone.ui.theme.SurfaceWhite
-import com.khatabook.clone.ui.theme.TextSecondary
+import com.khatabook.clone.ui.theme.KhataTheme
 
 @Composable
 fun ProfileScreen(
@@ -63,6 +59,7 @@ fun ProfileScreen(
 ) {
     val viewModel: ProfileViewModel = viewModel()
     val state = viewModel.state
+    val palette = KhataTheme.colors
     var confirmLogout by remember { mutableStateOf(false) }
 
     if (state.loggedOut) {
@@ -70,7 +67,7 @@ fun ProfileScreen(
     }
 
     Scaffold(
-        containerColor = ScreenBg,
+        containerColor = palette.screen,
         topBar = { KhataTopBar(title = "Profile & settings", onBack = onBack) },
         bottomBar = {
             HomeBottomBar(selected = 2, onHome = onHome, onReports = onReports, onProfile = {})
@@ -82,22 +79,34 @@ fun ProfileScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Surface(color = Navy, modifier = Modifier.fillMaxWidth()) {
+            HeaderSurface {
                 Row(
                     modifier = Modifier.padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Avatar(name = state.name.ifBlank { "?" }, size = 56)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(palette.onHeader.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = state.name.take(1).ifBlank { "?" }.uppercase(),
+                            color = palette.onHeader,
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text(
                             text = state.name.ifBlank { "Your name" },
-                            color = SurfaceWhite,
+                            color = palette.onHeader,
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
                             text = state.phone?.let { "+91 $it" } ?: "",
-                            color = SurfaceWhite.copy(alpha = 0.8f),
+                            color = palette.onHeaderMuted,
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
@@ -123,7 +132,7 @@ fun ProfileScreen(
                     onClick = viewModel::saveProfile,
                     enabled = !state.saving,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy),
+                    colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
                 ) {
                     Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -136,14 +145,14 @@ fun ProfileScreen(
                     Icon(
                         Icons.Default.Language,
                         contentDescription = null,
-                        tint = Navy,
+                        tint = palette.brand,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(Modifier.width(10.dp))
                     Text("Language", modifier = Modifier.weight(1f))
                     Text(
                         text = state.language.uppercase(),
-                        color = TextSecondary,
+                        color = palette.textSecondary,
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -152,7 +161,7 @@ fun ProfileScreen(
                     Icon(
                         Icons.Default.Dns,
                         contentDescription = null,
-                        tint = Navy,
+                        tint = palette.brand,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(Modifier.width(10.dp))
@@ -169,13 +178,13 @@ fun ProfileScreen(
                 Text(
                     text = "Use 10.0.2.2 for the emulator, or your machine's LAN address on a real phone.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
+                    color = palette.textSecondary,
                 )
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = viewModel::saveBaseUrl,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy),
+                    colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
                 ) {
                     Text("Save server", style = MaterialTheme.typography.labelLarge)
                 }
@@ -183,7 +192,7 @@ fun ProfileScreen(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = state.message,
-                        color = if (state.messageIsError) RedGive else GreenGet,
+                        color = if (state.messageIsError) palette.give else palette.get,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -191,7 +200,7 @@ fun ProfileScreen(
 
             Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
                 Surface(
-                    color = SurfaceWhite,
+                    color = palette.surface,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -205,20 +214,20 @@ fun ProfileScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.Logout,
                             contentDescription = null,
-                            tint = RedGive,
+                            tint = palette.give,
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("Log out", color = RedGive, style = MaterialTheme.typography.titleMedium)
+                        Text("Log out", color = palette.give, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "Khatabook clone · v1.0",
+                text = "Khatabook · v1.0",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = palette.textSecondary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
@@ -236,7 +245,7 @@ fun ProfileScreen(
                 TextButton(onClick = {
                     confirmLogout = false
                     viewModel.logout()
-                }) { Text("Log out", color = RedGive) }
+                }) { Text("Log out", color = palette.give) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmLogout = false }) { Text("Cancel") }
@@ -247,15 +256,16 @@ fun ProfileScreen(
 
 @Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
+    val palette = KhataTheme.colors
     Column(modifier = Modifier.padding(12.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary,
+            color = palette.textSecondary,
             modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
         )
         Surface(
-            color = SurfaceWhite,
+            color = palette.surface,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {

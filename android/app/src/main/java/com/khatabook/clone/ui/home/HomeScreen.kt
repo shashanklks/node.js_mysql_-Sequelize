@@ -2,11 +2,17 @@
 
 package com.khatabook.clone.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -25,6 +32,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,80 +46,89 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.khatabook.clone.data.remote.EntryType
 import com.khatabook.clone.data.remote.PartyDto
 import com.khatabook.clone.data.remote.PartyType
+import com.khatabook.clone.ui.common.AnimatedMoneyText
 import com.khatabook.clone.ui.common.Avatar
 import com.khatabook.clone.ui.common.EmptyState
+import com.khatabook.clone.ui.common.HeaderSurface
+import com.khatabook.clone.ui.common.KhataCard
 import com.khatabook.clone.ui.common.LoadingBox
+import com.khatabook.clone.ui.common.MoneyText
+import com.khatabook.clone.ui.common.Pill
+import com.khatabook.clone.ui.common.ProportionBar
 import com.khatabook.clone.ui.common.RowDivider
 import com.khatabook.clone.ui.common.ScreenMessage
+import com.khatabook.clone.ui.common.SegmentedTabs
 import com.khatabook.clone.ui.common.friendlyDate
-import com.khatabook.clone.ui.common.rupees
-import com.khatabook.clone.ui.theme.Divider
-import com.khatabook.clone.ui.theme.GreenGet
-import com.khatabook.clone.ui.theme.Navy
-import com.khatabook.clone.ui.theme.RedGive
-import com.khatabook.clone.ui.theme.ScreenBg
-import com.khatabook.clone.ui.theme.TextOnNavy
-import com.khatabook.clone.ui.theme.TextOnNavyMuted
-import com.khatabook.clone.ui.theme.TextSecondary
+import com.khatabook.clone.ui.theme.KhataTheme
 
 @Composable
 fun HomeScreen(
     onOpenParty: (Int) -> Unit,
     onAddParty: (String) -> Unit,
+    onQuickEntry: (partyId: Int, type: String) -> Unit,
     onOpenReports: () -> Unit,
     onOpenProfile: () -> Unit,
 ) {
     val viewModel: HomeViewModel = viewModel()
     val state = viewModel.state
+    val palette = KhataTheme.colors
 
     // Balances change on every ledger edit, so the list refreshes on return.
     LaunchedEffect(Unit) { viewModel.load(showSpinner = false) }
 
     Scaffold(
-        containerColor = ScreenBg,
+        containerColor = palette.screen,
         topBar = {
             HomeHeader(
                 businessName = state.businessName,
                 searching = state.searching,
                 query = state.query,
+                sort = state.sort,
                 onQueryChange = viewModel::onQueryChange,
                 onToggleSearch = viewModel::toggleSearch,
+                onSort = viewModel::setSort,
                 onOpenProfile = onOpenProfile,
+                summary = {
+                    SummaryCard(
+                        youWillGet = state.summary.youWillGet,
+                        youWillGive = state.summary.youWillGive,
+                        onViewReport = onOpenReports,
+                    )
+                },
             )
         },
         bottomBar = {
-            HomeBottomBar(
-                selected = 0,
-                onHome = {},
-                onReports = onOpenReports,
-                onProfile = onOpenProfile,
-            )
+            HomeBottomBar(selected = 0, onHome = {}, onReports = onOpenReports, onProfile = onOpenProfile)
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { onAddParty(state.tab) },
-                containerColor = Navy,
-                contentColor = TextOnNavy,
+                containerColor = palette.brand,
+                contentColor = palette.onHeader,
+                shape = RoundedCornerShape(16.dp),
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (state.tab == PartyType.CUSTOMER) "ADD CUSTOMER" else "ADD SUPPLIER",
+                    text = if (state.isCustomerTab) "Add customer" else "Add supplier",
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -118,56 +139,73 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            SummaryCard(
-                youWillGet = state.summary.youWillGet,
-                youWillGive = state.summary.youWillGive,
-                onViewReport = onOpenReports,
+            SegmentedTabs(
+                options = listOf("Customers", "Suppliers"),
+                selectedIndex = if (state.isCustomerTab) 0 else 1,
+                onSelect = {
+                    viewModel.selectTab(if (it == 0) PartyType.CUSTOMER else PartyType.SUPPLIER)
+                },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             )
-
-            TabRow(
-                selectedTabIndex = if (state.tab == PartyType.CUSTOMER) 0 else 1,
-                containerColor = com.khatabook.clone.ui.theme.SurfaceWhite,
-                contentColor = Navy,
-            ) {
-                Tab(
-                    selected = state.tab == PartyType.CUSTOMER,
-                    onClick = { viewModel.selectTab(PartyType.CUSTOMER) },
-                    text = { Text("Customers", style = MaterialTheme.typography.labelLarge) },
-                    selectedContentColor = Navy,
-                    unselectedContentColor = TextSecondary,
-                )
-                Tab(
-                    selected = state.tab == PartyType.SUPPLIER,
-                    onClick = { viewModel.selectTab(PartyType.SUPPLIER) },
-                    text = { Text("Suppliers", style = MaterialTheme.typography.labelLarge) },
-                    selectedContentColor = Navy,
-                    unselectedContentColor = TextSecondary,
-                )
-            }
 
             when {
                 state.loading -> LoadingBox(Modifier.weight(1f))
-                state.error != null -> Column(Modifier.weight(1f)) { ScreenMessage(state.error) }
+
+                state.error != null -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    ScreenMessage(state.error) {
+                        Button(
+                            onClick = { viewModel.load() },
+                            colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
+                            shape = RoundedCornerShape(10.dp),
+                        ) { Text("Try again") }
+                    }
+                }
+
                 state.parties.isEmpty() -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     EmptyState(
+                        icon = if (state.query.isBlank()) "📒" else "🔍",
                         title = if (state.query.isBlank()) {
-                            "No ${if (state.tab == PartyType.CUSTOMER) "customers" else "suppliers"} yet"
+                            "No ${if (state.isCustomerTab) "customers" else "suppliers"} yet"
                         } else {
-                            "Nothing matched \"${state.query}\""
+                            "Nothing matched “${state.query}”"
                         },
-                        message = "Add a name and start recording what you gave and what you got.",
+                        message = if (state.query.isBlank()) {
+                            "Add a name, then record what you gave and what you got."
+                        } else {
+                            "Try a different name or phone number."
+                        },
+                        action = {
+                            if (state.query.isBlank()) {
+                                Button(
+                                    onClick = { onAddParty(state.tab) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        if (state.isCustomerTab) "Add first customer" else "Add first supplier",
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                }
+                            }
+                        },
                     )
                 }
 
                 else -> LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .background(com.khatabook.clone.ui.theme.SurfaceWhite),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
+                        .padding(horizontal = 12.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(state.parties, key = { it.id }) { party ->
-                        PartyRow(party = party, onClick = { onOpenParty(party.id) })
-                        RowDivider(Modifier.padding(start = 72.dp))
+                        PartyCard(
+                            party = party,
+                            onClick = { onOpenParty(party.id) },
+                            onQuickEntry = { type -> onQuickEntry(party.id, type) },
+                        )
                     }
                 }
             }
@@ -180,71 +218,105 @@ private fun HomeHeader(
     businessName: String,
     searching: Boolean,
     query: String,
+    sort: PartySort,
     onQueryChange: (String) -> Unit,
     onToggleSearch: () -> Unit,
+    onSort: (PartySort) -> Unit,
     onOpenProfile: () -> Unit,
+    summary: @Composable () -> Unit,
 ) {
-    Surface(color = Navy) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (searching) {
-                TextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Search by name or number", color = TextOnNavyMuted) },
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Navy,
-                        unfocusedContainerColor = Navy,
-                        focusedTextColor = TextOnNavy,
-                        unfocusedTextColor = TextOnNavy,
-                        focusedIndicatorColor = TextOnNavyMuted,
-                        unfocusedIndicatorColor = TextOnNavyMuted,
-                        cursorColor = TextOnNavy,
-                    ),
-                )
-                IconButton(onClick = onToggleSearch) {
-                    Icon(Icons.Default.Close, contentDescription = "Close search", tint = TextOnNavy)
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(36.dp)
-                        .background(TextOnNavy.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                        .clickable(onClick = onOpenProfile),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = businessName.take(1).uppercase(),
-                        color = TextOnNavy,
-                        fontWeight = FontWeight.Bold,
+    val palette = KhataTheme.colors
+    var sortOpen by remember { mutableStateOf(false) }
+
+    HeaderSurface {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(62.dp)
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (searching) {
+                    TextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Search name or number", color = palette.onHeaderMuted) },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            focusedTextColor = palette.onHeader,
+                            unfocusedTextColor = palette.onHeader,
+                            focusedIndicatorColor = palette.onHeaderMuted,
+                            unfocusedIndicatorColor = palette.onHeaderMuted,
+                            cursorColor = palette.onHeader,
+                        ),
                     )
+                    IconButton(onClick = onToggleSearch) {
+                        Icon(Icons.Default.Close, contentDescription = "Close search", tint = palette.onHeader)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(palette.onHeader.copy(alpha = 0.16f))
+                            .clickable(onClick = onOpenProfile),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = businessName.take(1).uppercase(),
+                            color = palette.onHeader,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = businessName,
+                            color = palette.onHeader,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = sort.label,
+                            color = palette.onHeaderMuted,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                        )
+                    }
+                    Box {
+                        IconButton(onClick = { sortOpen = true }) {
+                            Icon(Icons.Default.SwapVert, contentDescription = "Sort", tint = palette.onHeader)
+                        }
+                        DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                            PartySort.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        onSort(option)
+                                        sortOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    IconButton(onClick = onToggleSearch) {
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = palette.onHeader)
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = businessName,
-                        color = TextOnNavy,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = "Your business ledger",
-                        color = TextOnNavyMuted,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                    )
-                }
-                IconButton(onClick = onToggleSearch) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = TextOnNavy)
-                }
+            }
+
+            // The summary rides inside the header so the card overlaps the
+            // gradient edge instead of floating on the grey below it.
+            AnimatedVisibility(
+                visible = !searching,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                summary()
             }
         }
     }
@@ -252,54 +324,67 @@ private fun HomeHeader(
 
 @Composable
 private fun SummaryCard(youWillGet: Double, youWillGive: Double, onViewReport: () -> Unit) {
-    Surface(
-        color = com.khatabook.clone.ui.theme.SurfaceWhite,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp),
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 2.dp,
-    ) {
+    val palette = KhataTheme.colors
+    KhataCard(modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) {
         Column {
-            Row(modifier = Modifier.height(78.dp)) {
-                SummaryCell(
-                    label = "You will get",
-                    amount = youWillGet,
-                    color = GreenGet,
+            Row(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "You will get",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textSecondary,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    AnimatedMoneyText(
+                        amount = youWillGet,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = palette.get,
+                    )
+                }
+                Column(
                     modifier = Modifier.weight(1f),
-                )
-                Box(
-                    Modifier
-                        .width(1.dp)
-                        .height(78.dp)
-                        .background(Divider)
-                )
-                SummaryCell(
-                    label = "You will give",
-                    amount = youWillGive,
-                    color = RedGive,
-                    modifier = Modifier.weight(1f),
-                )
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    Text(
+                        text = "You will give",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textSecondary,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    AnimatedMoneyText(
+                        amount = youWillGive,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = palette.give,
+                    )
+                }
             }
+
+            ProportionBar(
+                get = youWillGet,
+                give = youWillGive,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+
+            Spacer(Modifier.height(14.dp))
             RowDivider()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onViewReport)
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 13.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     Icons.Default.PieChart,
                     contentDescription = null,
-                    tint = Navy,
-                    modifier = Modifier.size(18.dp),
+                    tint = palette.brand,
+                    modifier = Modifier.size(17.dp),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "VIEW REPORT",
-                    color = Navy,
+                    text = "View report",
+                    color = palette.brand,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -307,68 +392,72 @@ private fun SummaryCard(youWillGet: Double, youWillGive: Double, onViewReport: (
     }
 }
 
+/**
+ * A party row carries its own "you got paid" shortcut. Collecting a payment is
+ * the most common thing that happens at the counter, and it used to take three
+ * taps to reach; here it takes one.
+ */
 @Composable
-private fun SummaryCell(
-    label: String,
-    amount: Double,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = rupees(amount),
-            style = MaterialTheme.typography.titleLarge,
-            color = color,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
+private fun PartyCard(party: PartyDto, onClick: () -> Unit, onQuickEntry: (String) -> Unit) {
+    val palette = KhataTheme.colors
+    val settled = party.balance == 0.0
 
-@Composable
-private fun PartyRow(party: PartyDto, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Avatar(name = party.name)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = party.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-            )
-            Text(
-                text = party.lastEntryDate?.let { friendlyDate(it) } ?: "No entries yet",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = rupees(party.balance),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = when {
-                    party.balance > 0 -> GreenGet
-                    party.balance < 0 -> RedGive
-                    else -> TextSecondary
-                },
-            )
-            if (party.balance != 0.0) {
+    KhataCard(onClick = onClick) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Avatar(name = party.name, size = 42)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (party.balance > 0) "You will get" else "You will give",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary,
+                    text = party.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = palette.textPrimary,
+                    maxLines = 1,
                 )
+                Spacer(Modifier.height(2.dp))
+                if (settled) {
+                    Pill(
+                        text = "SETTLED",
+                        background = palette.surfaceAlt,
+                        contentColor = palette.textSecondary,
+                    )
+                } else {
+                    Text(
+                        text = party.lastEntryDate?.let { friendlyDate(it) } ?: "No entries yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textFaint,
+                    )
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                MoneyText(amount = party.balance)
+                if (!settled) {
+                    Text(
+                        text = if (party.balance > 0) "You will get" else "You will give",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textFaint,
+                    )
+                }
+            }
+
+            IconButton(onClick = { onQuickEntry(EntryType.GOT) }) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(palette.getSoft),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Record payment received from ${party.name}",
+                        tint = palette.get,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
             }
         }
     }
@@ -381,33 +470,34 @@ fun HomeBottomBar(
     onReports: () -> Unit,
     onProfile: () -> Unit,
 ) {
-    NavigationBar(containerColor = com.khatabook.clone.ui.theme.SurfaceWhite) {
+    val palette = KhataTheme.colors
+    NavigationBar(containerColor = palette.surface, tonalElevation = 0.dp) {
         val colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = Navy,
-            selectedTextColor = Navy,
-            unselectedIconColor = TextSecondary,
-            unselectedTextColor = TextSecondary,
-            indicatorColor = com.khatabook.clone.ui.theme.AvatarBg,
+            selectedIconColor = palette.brand,
+            selectedTextColor = palette.brand,
+            unselectedIconColor = palette.textFaint,
+            unselectedTextColor = palette.textFaint,
+            indicatorColor = palette.avatarBg,
         )
         NavigationBarItem(
             selected = selected == 0,
             onClick = onHome,
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("Home") },
+            label = { Text("Home", style = MaterialTheme.typography.labelMedium) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == 1,
             onClick = onReports,
             icon = { Icon(Icons.Default.PieChart, contentDescription = null) },
-            label = { Text("Reports") },
+            label = { Text("Reports", style = MaterialTheme.typography.labelMedium) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == 2,
             onClick = onProfile,
             icon = { Icon(Icons.Default.Person, contentDescription = null) },
-            label = { Text("Profile") },
+            label = { Text("Profile", style = MaterialTheme.typography.labelMedium) },
             colors = colors,
         )
     }

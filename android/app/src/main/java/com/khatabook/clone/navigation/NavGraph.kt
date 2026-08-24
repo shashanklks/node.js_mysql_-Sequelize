@@ -107,6 +107,7 @@ fun KhatabookNavGraph(navController: NavHostController = rememberNavController()
             HomeScreen(
                 onOpenParty = { navController.navigate(Routes.party(it)) },
                 onAddParty = { type -> navController.navigate(Routes.addParty(type)) },
+                onQuickEntry = { id, type -> navController.navigate(Routes.addEntry(id, type)) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
                 onOpenProfile = { navController.navigate(Routes.PROFILE) },
             )

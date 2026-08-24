@@ -22,6 +22,11 @@ private val longDisplayFormat = SimpleDateFormat("dd MMM yyyy", Locale.US)
 
 fun todayIso(): String = isoFormat.format(Date())
 
+fun yesterdayIso(): String {
+    val calendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+    return isoFormat.format(calendar.time)
+}
+
 fun isoToDate(iso: String): Date? = runCatching { isoFormat.parse(iso) }.getOrNull()
 
 fun dateToIso(date: Date): String = isoFormat.format(date)

@@ -38,12 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.khatabook.clone.ui.common.KhataTopBar
-import com.khatabook.clone.ui.theme.Divider
-import com.khatabook.clone.ui.theme.Navy
-import com.khatabook.clone.ui.theme.RedGive
-import com.khatabook.clone.ui.theme.ScreenBg
-import com.khatabook.clone.ui.theme.SurfaceWhite
-import com.khatabook.clone.ui.theme.TextSecondary
+import com.khatabook.clone.ui.theme.KhataTheme
 
 @Composable
 fun OtpScreen(
@@ -54,6 +49,7 @@ fun OtpScreen(
 ) {
     val viewModel: OtpViewModel = viewModel()
     val state = viewModel.state
+    val palette = KhataTheme.colors
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -71,7 +67,7 @@ fun OtpScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ScreenBg),
+            .background(palette.screen),
     ) {
         KhataTopBar(title = "Verify mobile number", onBack = onBack)
 
@@ -85,7 +81,7 @@ fun OtpScreen(
             Text(
                 text = "Enter the OTP sent to",
                 style = MaterialTheme.typography.bodyLarge,
-                color = TextSecondary,
+                color = palette.textSecondary,
             )
             Spacer(Modifier.height(4.dp))
             Text(
@@ -103,7 +99,7 @@ fun OtpScreen(
 
             if (state.error != null) {
                 Spacer(Modifier.height(12.dp))
-                Text(text = state.error, color = RedGive, style = MaterialTheme.typography.bodyMedium)
+                Text(text = state.error, color = palette.give, style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(Modifier.height(16.dp))
@@ -111,11 +107,11 @@ fun OtpScreen(
                 Text(
                     text = "Resend OTP in 00:${state.resendSeconds.toString().padStart(2, '0')}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
+                    color = palette.textSecondary,
                 )
             } else {
                 TextButton(onClick = { viewModel.resend(phone) }) {
-                    Text("Resend OTP", color = Navy, style = MaterialTheme.typography.labelLarge)
+                    Text("Resend OTP", color = palette.brand, style = MaterialTheme.typography.labelLarge)
                 }
             }
 
@@ -127,12 +123,12 @@ fun OtpScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Navy),
+                colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
             ) {
                 if (state.loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = SurfaceWhite,
+                        color = palette.surface,
                         strokeWidth = 2.dp,
                     )
                 } else {
@@ -144,7 +140,7 @@ fun OtpScreen(
             Text(
                 text = "Did not receive the code? Check that the API server is reachable.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = palette.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 12.dp),
             )
@@ -159,6 +155,7 @@ private fun OtpBoxes(
     onCodeChange: (String) -> Unit,
     focusRequester: FocusRequester,
 ) {
+    val palette = KhataTheme.colors
     BasicTextField(
         value = code,
         onValueChange = onCodeChange,
@@ -171,10 +168,10 @@ private fun OtpBoxes(
                     Box(
                         modifier = Modifier
                             .size(width = 44.dp, height = 54.dp)
-                            .background(SurfaceWhite, RoundedCornerShape(8.dp))
+                            .background(palette.surface, RoundedCornerShape(8.dp))
                             .border(
                                 width = if (char != null) 2.dp else 1.dp,
-                                color = if (char != null) Navy else Divider,
+                                color = if (char != null) palette.brand else palette.line,
                                 shape = RoundedCornerShape(8.dp),
                             ),
                         contentAlignment = Alignment.Center,

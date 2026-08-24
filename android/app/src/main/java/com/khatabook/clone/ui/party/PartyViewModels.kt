@@ -93,15 +93,9 @@ class AddEntryViewModel : ViewModel() {
         }
     }
 
+    /** The keypad already enforces the shape of the value it hands back. */
     fun onAmountChange(value: String) {
-        // One optional decimal point, two decimals, nothing else.
-        val cleaned = value.filter { it.isDigit() || it == '.' }
-        val parts = cleaned.split('.')
-        val normalized = when {
-            parts.size <= 1 -> cleaned
-            else -> parts[0] + "." + parts[1].take(2)
-        }
-        state = state.copy(amount = normalized, error = null)
+        state = state.copy(amount = value, error = null)
     }
 
     fun onNoteChange(value: String) {

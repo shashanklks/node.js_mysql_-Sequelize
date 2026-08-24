@@ -14,17 +14,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+enum class PartySort(val api: String, val label: String) {
+    RECENT("recent", "Most recent"),
+    HIGHEST("highest", "Highest amount"),
+    NAME("name", "Name (A–Z)"),
+}
+
 data class HomeUiState(
     val tab: String = PartyType.CUSTOMER,
     val parties: List<PartyDto> = emptyList(),
     val summary: BookSummary = BookSummary(),
     val query: String = "",
     val searching: Boolean = false,
+    val sort: PartySort = PartySort.RECENT,
     val loading: Boolean = true,
     val error: String? = null,
     val businessName: String = "My Business",
     val ownerName: String = "",
-)
+) {
+    val isCustomerTab: Boolean get() = tab == PartyType.CUSTOMER
+}
 
 class HomeViewModel : ViewModel() {
 
@@ -54,6 +63,12 @@ class HomeViewModel : ViewModel() {
         load()
     }
 
+    fun setSort(sort: PartySort) {
+        if (sort == state.sort) return
+        state = state.copy(sort = sort)
+        load(showSpinner = false)
+    }
+
     fun toggleSearch() {
         state = if (state.searching) {
             state.copy(searching = false, query = "")
@@ -76,7 +91,7 @@ class HomeViewModel : ViewModel() {
     fun load(showSpinner: Boolean = true) {
         if (showSpinner) state = state.copy(loading = true)
         viewModelScope.launch {
-            repo.parties(type = state.tab, search = state.query)
+            repo.parties(type = state.tab, search = state.query, sort = state.sort.api)
                 .onSuccess {
                     state = state.copy(
                         parties = it.parties,

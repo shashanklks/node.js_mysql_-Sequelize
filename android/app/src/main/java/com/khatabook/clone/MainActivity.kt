@@ -8,7 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.khatabook.clone.navigation.KhatabookNavGraph
 import com.khatabook.clone.ui.theme.KhatabookTheme
-import com.khatabook.clone.ui.theme.ScreenBg
+import com.khatabook.clone.ui.theme.KhataTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             KhatabookTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = ScreenBg) {
+                Surface(modifier = Modifier.fillMaxSize(), color = KhataTheme.colors.screen) {
                     KhatabookNavGraph()
                 }
             }

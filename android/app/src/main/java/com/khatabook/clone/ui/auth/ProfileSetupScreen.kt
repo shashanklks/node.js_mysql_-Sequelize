@@ -25,17 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.khatabook.clone.ui.theme.Divider
-import com.khatabook.clone.ui.theme.Navy
-import com.khatabook.clone.ui.theme.RedGive
-import com.khatabook.clone.ui.theme.ScreenBg
-import com.khatabook.clone.ui.theme.SurfaceWhite
-import com.khatabook.clone.ui.theme.TextSecondary
+import com.khatabook.clone.ui.common.LabeledField
+import com.khatabook.clone.ui.theme.KhataTheme
 
 @Composable
 fun ProfileSetupScreen(onDone: () -> Unit) {
     val viewModel: ProfileSetupViewModel = viewModel()
     val state = viewModel.state
+    val palette = KhataTheme.colors
 
     LaunchedEffect(state.saved) {
         if (state.saved) onDone()
@@ -44,7 +41,7 @@ fun ProfileSetupScreen(onDone: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ScreenBg)
+            .background(palette.screen)
             .padding(24.dp),
     ) {
         Spacer(Modifier.height(48.dp))
@@ -57,7 +54,7 @@ fun ProfileSetupScreen(onDone: () -> Unit) {
         Text(
             text = "This name shows up on the receipts you share with customers",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary,
+            color = palette.textSecondary,
         )
 
         Spacer(Modifier.height(28.dp))
@@ -77,7 +74,7 @@ fun ProfileSetupScreen(onDone: () -> Unit) {
 
         if (state.error != null) {
             Spacer(Modifier.height(12.dp))
-            Text(text = state.error, color = RedGive, style = MaterialTheme.typography.bodyMedium)
+            Text(text = state.error, color = palette.give, style = MaterialTheme.typography.bodyMedium)
         }
 
         Spacer(Modifier.weight(1f))
@@ -88,12 +85,12 @@ fun ProfileSetupScreen(onDone: () -> Unit) {
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Navy),
+            colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
         ) {
             if (state.loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
-                    color = SurfaceWhite,
+                    color = palette.surface,
                     strokeWidth = 2.dp,
                 )
             } else {
@@ -101,40 +98,5 @@ fun ProfileSetupScreen(onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
-    }
-}
-
-@Composable
-fun LabeledField(
-    label: String,
-    value: String,
-    placeholder: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions =
-        androidx.compose.foundation.text.KeyboardOptions.Default,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary,
-        )
-        Spacer(Modifier.height(6.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(placeholder, color = TextSecondary) },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            keyboardOptions = keyboardOptions,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = SurfaceWhite,
-                unfocusedContainerColor = SurfaceWhite,
-                focusedBorderColor = Navy,
-                unfocusedBorderColor = Divider,
-            ),
-        )
     }
 }

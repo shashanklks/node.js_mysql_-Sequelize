@@ -6,29 +6,43 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.khatabook.clone.ServiceLocator
+import com.khatabook.clone.data.remote.EntryType
 import com.khatabook.clone.data.remote.ReportEntryDto
+import com.khatabook.clone.ui.common.DayFlow
 import com.khatabook.clone.ui.common.dateToIso
+import com.khatabook.clone.ui.common.isoToDate
 import com.khatabook.clone.ui.common.todayIso
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
-enum class ReportRange { MONTH, WEEK, ALL }
+enum class ReportRange(val label: String) {
+    WEEK("Last 7 days"),
+    MONTH("This month"),
+    ALL("All time"),
+}
 
 data class ReportsUiState(
     val range: ReportRange = ReportRange.MONTH,
     val partyType: String? = null,
     val entries: List<ReportEntryDto> = emptyList(),
+    val days: List<DayFlow> = emptyList(),
     val gave: Double = 0.0,
     val got: Double = 0.0,
     val overallGet: Double = 0.0,
     val overallGive: Double = 0.0,
     val loading: Boolean = true,
     val error: String? = null,
-)
+) {
+    /** Positive when more came in than went out over the window. */
+    val net: Double get() = got - gave
+}
 
 class ReportsViewModel : ViewModel() {
 
     private val repo = ServiceLocator.repository
+    private val dayLabel = SimpleDateFormat("d MMM", Locale.US)
 
     var state by mutableStateOf(ReportsUiState())
         private set
@@ -49,6 +63,8 @@ class ReportsViewModel : ViewModel() {
         load()
     }
 
+    fun retry() = load()
+
     private fun load() {
         state = state.copy(loading = true)
         viewModelScope.launch {
@@ -65,6 +81,7 @@ class ReportsViewModel : ViewModel() {
                 .onSuccess {
                     state = state.copy(
                         entries = it.entries,
+                        days = dailyFlow(it.entries),
                         gave = it.summary.gave,
                         got = it.summary.got,
                         loading = false,
@@ -74,6 +91,23 @@ class ReportsViewModel : ViewModel() {
                 .onFailure { state = state.copy(loading = false, error = it.message) }
         }
     }
+
+    /**
+     * The chart shows the most recent trading days in the window rather than
+     * every calendar day — ten bars stay readable on a phone, thirty do not.
+     */
+    private fun dailyFlow(entries: List<ReportEntryDto>): List<DayFlow> = entries
+        .groupBy { it.entryDate }
+        .toSortedMap()
+        .toList()
+        .takeLast(10)
+        .map { (date, rows) ->
+            DayFlow(
+                label = isoToDate(date)?.let { dayLabel.format(it) } ?: date,
+                gave = rows.filter { it.type == EntryType.GAVE }.sumOf { it.amount },
+                got = rows.filter { it.type == EntryType.GOT }.sumOf { it.amount },
+            )
+        }
 
     private fun rangeBounds(range: ReportRange): Pair<String?, String?> = when (range) {
         ReportRange.ALL -> null to null
